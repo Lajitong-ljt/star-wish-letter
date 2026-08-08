@@ -1,0 +1,886 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+<meta name="theme-color" content="#05060f">
+<title>一封祝福信</title>
+<style>
+  html, body { margin: 0; height: 100%; overflow: hidden; overscroll-behavior: none;
+    background: radial-gradient(120% 90% at 50% 40%, #0c1128 0%, #070a1a 55%, #03040c 100%); }
+  /* 手机端主题：蒲公英低语 —— 青绿草甸天幕 */
+  body.touch-device { background: linear-gradient(180deg, #eaf7e6 0%, #cdeecb 35%, #a8dfae 70%, #7ccd94 100%); }
+  canvas { position: fixed; inset: 0; display: block; touch-action: none;
+    -webkit-touch-callout: none; -webkit-user-select: none; user-select: none; }
+  /* 暗角，让星空更有纵深感 */
+  body::after { content: ""; position: fixed; inset: 0; z-index: 1; pointer-events: none;
+    background: radial-gradient(120% 100% at 50% 50%, transparent 55%, rgba(0,0,0,.5) 100%); }
+  /* 手机端：暗角换成柔和的草地暗角 */
+  body.touch-device::after { background: radial-gradient(120% 100% at 50% 40%, transparent 50%, rgba(70,140,90,.28) 100%); }
+  #hint { position: fixed; inset: 0; z-index: 2; display: flex; flex-direction: column;
+    align-items: center; justify-content: center; pointer-events: none;
+    transition: opacity 1.4s ease, transform 1.4s ease; }
+  #hint .t { font: 600 clamp(26px, 6vw, 46px)/1.4 "Songti SC","STSong","Noto Serif SC",serif;
+    letter-spacing: .45em; text-indent: .45em;
+    background: linear-gradient(180deg, #edf3ff, #9fb4e8);
+    -webkit-background-clip: text; background-clip: text; color: transparent;
+    animation: breathe 3.4s ease-in-out infinite; }
+  body.touch-device #hint .t { background: linear-gradient(180deg, #f8fdf5, #b7d9b0); }
+  #hint .s { margin-top: 34px; font: 300 clamp(12px, 2.6vw, 15px)/1.6 "PingFang SC","Microsoft YaHei",sans-serif;
+    letter-spacing: .35em; color: rgba(190,205,245,.5); }
+  body.touch-device #hint .s { color: rgba(70,130,90,.6); }
+  #hint.hide { opacity: 0; transform: translateY(-18px); }
+  @keyframes breathe { 0%,100% { opacity:.72; transform: scale(1); } 50% { opacity:1; transform: scale(1.035); } }
+
+  /* ---------- 文字成型后的点击提示 ---------- */
+  #tapHint { position: fixed; left: 50%; bottom: 12%; z-index: 2; transform: translateX(-50%);
+    font: 300 clamp(14px, 3vw, 18px)/1.6 "PingFang SC","Microsoft YaHei",sans-serif;
+    letter-spacing: .3em; color: rgba(255,220,170,.85); pointer-events: none;
+    opacity: 0; transition: opacity 1s ease; }
+  body.touch-device #tapHint { color: rgba(60,120,75,.85); }
+  body.touch-device #tapHint { bottom: calc(12% + env(safe-area-inset-bottom, 0px)); }
+  #tapHint.show { opacity: 1; }
+
+  /* ---------- 阶段按钮：粒子聚成的圆环中心的发光圆钮 ---------- */
+  #stageBtn { position: fixed; left: 50%; top: 55%; z-index: 3;
+    width: 190px; height: 190px; border-radius: 50%;
+    transform: translate(-50%, -50%);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 58px; cursor: pointer; color: #ffe9c4;
+    background: radial-gradient(circle, rgba(255,214,140,.30) 0%, rgba(255,160,80,.10) 55%, transparent 72%);
+    border: 1px solid rgba(255,205,130,.40);
+    box-shadow: 0 0 70px rgba(255,175,85,.30), inset 0 0 46px rgba(255,195,125,.14);
+    opacity: 0; pointer-events: none; transition: opacity .9s ease;
+    touch-action: manipulation; -webkit-tap-highlight-color: transparent;
+    animation: btnBreathe 3s ease-in-out infinite; }
+  #stageBtn.show { opacity: 1; pointer-events: auto; }
+  #stageBtn::after { content: ""; position: absolute; inset: -14px; border-radius: 50%;
+    border: 1px dashed rgba(255,205,130,.30); animation: spin 14s linear infinite; }
+  @keyframes btnBreathe { 0%,100% { transform: translate(-50%,-50%) scale(1); } 50% { transform: translate(-50%,-50%) scale(1.05); } }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  /* ---------- 问题 / 答案面板 ---------- */
+  .panel { position: fixed; inset: 0; z-index: 4; display: flex; flex-direction: column;
+    align-items: center; justify-content: center; gap: 30px;
+    background: rgba(5,8,20,.55); backdrop-filter: blur(7px);
+    opacity: 0; pointer-events: none; transition: opacity .7s ease; }
+  body.touch-device .panel { background: rgba(255,255,255,.42); }
+  .panel.show { opacity: 1; pointer-events: auto; }
+  .panel .q { margin: 0; font: 600 clamp(20px, 4.6vw, 34px)/1.5 "PingFang SC","Microsoft YaHei",sans-serif;
+    letter-spacing: .14em; text-align: center; color: #f2ecff;
+    text-shadow: 0 0 34px rgba(160,180,255,.55); animation: qIn .7s ease both; }
+  body.touch-device .panel .q { color: #2e5c3a; text-shadow: 0 0 26px rgba(255,255,255,.8); }
+  @keyframes qIn { from { opacity: 0; transform: translateY(14px); } to { opacity: 1; transform: none; } }
+  .panel .btns { display: flex; gap: 46px; }
+  button.answer { position: relative; min-width: 128px; padding: 16px 38px;
+    font: 600 clamp(18px, 3.4vw, 24px) "PingFang SC","Microsoft YaHei",sans-serif;
+    letter-spacing: .2em; color: #fff; cursor: pointer;
+    border-radius: 999px; border: 1px solid rgba(160,190,255,.45);
+    background: linear-gradient(135deg, rgba(255,180,120,.16), rgba(120,160,255,.16));
+    transition: transform .16s ease, box-shadow .25s ease; touch-action: manipulation; }
+  body.touch-device button.answer { border-color: rgba(90,160,110,.65);
+    background: linear-gradient(135deg, rgba(255,255,255,.5), rgba(190,230,190,.45)); }
+  button.answer:active { transform: scale(.97); }
+  #yes:hover { transform: scale(1.07); box-shadow: 0 0 34px rgba(255,190,120,.4); }
+  /* 「不想」按钮：初始紧跟「想」旁边，遇到鼠标/手指就跑（fixed 定位实现跳动）
+     手机上不逃跑：static 定位与「想」并排（见 body.touch-device 规则） */
+  #no { position: fixed; margin: 0; z-index: 6; left: 0; top: 0;
+    background: linear-gradient(135deg, rgba(120,140,255,.18), rgba(150,120,255,.18));
+    transition: left .22s cubic-bezier(.2,1.4,.4,1), top .22s cubic-bezier(.2,1.4,.4,1),
+                transform .15s ease; will-change: left, top; }
+  /* 触摸设备：不逃跑，与「想」并排，直接可点 */
+  body.touch-device #no { position: static; transition: none; will-change: auto; }
+  body.touch-device .panel .btns { flex-wrap: wrap; justify-content: center; }
+  #answerPanel .a { margin: 0; font: 700 clamp(26px, 6vw, 46px)/1.5 "Songti SC","STSong","Noto Serif SC",serif;
+    letter-spacing: .18em; text-align: center; color: #ffe9c4;
+    text-shadow: 0 0 40px rgba(255,190,120,.6); animation: qIn .8s ease both; }
+  body.touch-device #answerPanel .a { color: #2e5c3a; text-shadow: 0 0 30px rgba(255,255,255,.9); }
+
+  /* ========== 手机端专属：翻页信笺（与桌面星空完全不同的排版） ========== */
+  #letter { display: none; }
+  body.touch-device #letter { display: block; position: fixed; inset: 0; z-index: 5;
+    display: flex; align-items: center; justify-content: center;
+    perspective: 1200px; }
+  .letter-inner { position: relative; width: min(320px, 84vw); height: min(460px, 74vh);
+    transform-style: preserve-3d; transition: transform .9s cubic-bezier(.4,.1,.2,1); }
+  body.touch-device #letter.flipped .letter-inner { transform: rotateY(180deg); }
+  .letter-side { position: absolute; inset: 0; backface-visibility: hidden;
+    border-radius: 14px; display: flex; flex-direction: column; align-items: center; justify-content: center; }
+  /* 信封面：青绿纸 */
+  .letter-front { background: linear-gradient(160deg, #b5e0b0, #8cc98e);
+    box-shadow: 0 18px 50px rgba(60,120,80,.35), inset 0 0 60px rgba(255,255,255,.25);
+    padding: 30px; }
+  .front-stamp { font-size: 44px; margin-bottom: 26px; filter: drop-shadow(0 2px 6px rgba(0,0,0,.15)); }
+  .front-t1 { margin: 0 0 10px; font: 700 26px/1.4 "Songti SC","STSong",serif; letter-spacing: .22em; color: #23563a; }
+  .front-t2 { margin: 0; font: 300 15px/1.7 "PingFang SC","Microsoft YaHei",sans-serif;
+    letter-spacing: .14em; color: rgba(45,95,65,.85); }
+  .front-hint { position: absolute; bottom: 26px; font: 300 13px/1 "PingFang SC",sans-serif;
+    letter-spacing: .28em; color: rgba(45,95,65,.75); animation: breathe 2.8s ease-in-out infinite; }
+  /* 信纸背面：米白纸 + 手写祝福 */
+  .letter-back { background: linear-gradient(180deg, #fdf9ef, #f6eeda);
+    box-shadow: 0 18px 50px rgba(90,70,40,.25);
+    border: 1px solid rgba(180,150,100,.35); transform: rotateY(180deg); padding: 30px; }
+  .letter-back::before { content: ""; position: absolute; top: 0; left: 26px; right: 26px;
+    height: 1px; background: rgba(190,160,110,.4); box-shadow: 0 34px 0 rgba(190,160,110,.3), 0 68px 0 rgba(190,160,110,.2); }
+  .back-wish { margin: 0 0 18px; font: 700 30px/1.5 "Kaiti SC","STKaiti","KaiTi",serif;
+    letter-spacing: .18em; color: #3d4a2e; text-align: center; }
+  .back-sub { margin: 0; font: 300 15px/2.1 "Kaiti SC","STKaiti","KaiTi",serif;
+    letter-spacing: .08em; color: rgba(80,90,55,.75); text-align: center; }
+  .back-actions { display: flex; gap: 14px; margin-top: 34px; }
+  .letter-btn { min-width: 108px; padding: 12px 22px; font-size: 16px !important;
+    border-color: rgba(110,150,90,.6) !important; color: #3d5a30 !important;
+    background: linear-gradient(135deg, rgba(255,255,255,.7), rgba(205,230,190,.5)) !important; }
+  .back-seal { position: absolute; right: 22px; bottom: 20px; width: 52px; height: 52px;
+    border-radius: 50%; border: 2px solid rgba(170,90,70,.55); display: flex;
+    align-items: center; justify-content: center; transform: rotate(-14deg);
+    font: 700 13px/1.2 "Kaiti SC","STKaiti",serif; color: rgba(160,80,60,.8); letter-spacing: .1em; }
+</style>
+</head>
+<body>
+
+<div id="hint">
+  <div class="t">划过这片星空</div>
+  <div class="s" id="hintS">移动鼠标 · 轻触屏幕</div>
+</div>
+<!-- 文字成型后：轻点屏幕 -->
+<div id="tapHint">轻点屏幕，让星星变个魔法</div>
+
+<!-- 粒子聚成的按钮（发光圆钮） -->
+<div id="stageBtn" title="点我">✨</div>
+
+<!-- 问题面板 -->
+<div id="qa" class="panel">
+  <p class="q">想知道这个网站<br>是谁做的吗？</p>
+  <div class="btns">
+    <button class="answer" id="yes">想</button>
+    <button class="answer" id="no">不想</button>
+  </div>
+</div>
+
+<!-- 答案面板 -->
+<div id="answer" class="panel">
+  <p class="a">就不告诉你</p>
+</div>
+
+<!-- 手机端专属：翻页信笺（祝福语版式，与桌面星空完全不同的排版） -->
+<div id="letter">
+  <div class="letter-inner">
+    <!-- 信封面 -->
+    <div class="letter-side letter-front">
+      <div class="front-stamp">✉</div>
+      <p class="front-t1">一封祝福信</p>
+      <p class="front-t2">写给看到这里的你</p>
+      <p class="front-hint">轻点信纸 · 翻开</p>
+    </div>
+    <!-- 信纸背面：祝福正文 -->
+    <div class="letter-side letter-back">
+      <p class="back-wish">祝你天天开心</p>
+      <p class="back-sub">愿每一个平凡日子<br>都有小小的亮光</p>
+      <div class="back-actions">
+        <button class="answer letter-btn" id="letterDone">收下祝福</button>
+        <button class="answer letter-btn" id="letterAgain">再看一遍</button>
+      </div>
+      <div class="back-seal"><span>愿常乐</span></div>
+    </div>
+  </div>
+</div>
+
+<script>
+/* ============================================================
+ *  ✦ 星空告白 v2 —— 星海 → 聚字 → 聚成按钮 → 问答题
+ *
+ *  ▸ 把 TEXT 换成你想说的话（支持中英文、可换行 \n）
+ *  ▸ ANSWER_TEXT 是点「想」之后的答案
+ *  ▸ COUNT 是粒子数量：手机自动减半，低配可调小
+ * ============================================================ */
+const TEXT = "祝你天天开心";
+const ANSWER_TEXT = "就不告诉你";
+const COUNT = 8000;
+const AUTO_FORM_DELAY = 4200;   // 打开后几毫秒自动聚合成文字
+const SCATTER_HOLD = 1600;      // 点击打乱后，散开停留几毫秒再聚成按钮
+const ESCAPE_COUNT = 7;         // 「不想」逃跑几次后缴械投降（可点）
+
+/* 本地 three.min.js 优先（可完全离线），没有就依次走 CDN */
+const CDNS = [
+  "three.min.js",
+  "https://cdn.jsdelivr.net/npm/three@0.152.2/build/three.min.js",
+  "https://unpkg.com/three@0.152.2/build/three.min.js",
+  "https://cdn.staticfile.org/three.js/0.152.2/three.min.js",
+];
+
+/* ============================================================
+ *  shader —— 粒子：冷蓝星光 → 暖金文字/按钮，带闪烁与柔光核心
+ * ============================================================ */
+const VERT = `
+uniform float uTime;
+uniform float uForm;      // 0 = 星海，1 = 文字/按钮
+uniform float uGlow;      // 开场淡入
+uniform float uTheme;     // 0 = 桌面冷蓝星空，1 = 手机落日暖金
+uniform float uPixelRatio;
+attribute float aSize;
+attribute float aPhase;
+attribute vec3 aColorMul;
+varying vec3 vColor;
+varying float vAlpha;
+void main() {
+  vec4 mv = modelViewMatrix * vec4(position, 1.0);
+  gl_Position = projectionMatrix * mv;
+  float tw = mix(0.70 + 0.30 * sin(uTime * (1.2 + aPhase * 0.9) + aPhase * 6.2831),
+                 1.0,
+                 smoothstep(0.10, 0.55, uForm));
+  float dist = max(1.0, -mv.z);
+  gl_PointSize = min(aSize * tw * (300.0 / dist) * uPixelRatio, 90.0);
+  /* 星海色：冷蓝 ↔ 蒲公英白；成字色：暖金 ↔ 深青绿（浅底上要深色才清晰） */
+  vec3 starA = vec3(0.66, 0.76, 1.00);
+  vec3 starB = vec3(1.00, 0.98, 0.92);
+  vec3 starC = mix(starA, starB, uTheme);
+  vec3 textC = uTheme > 0.5 ? vec3(0.22, 0.42, 0.30) : vec3(1.00, 0.76, 0.42);
+  /* 手机浅底主题：aColorMul 不漂白文字，保持深绿清晰 */
+  vec3 mul = uTheme > 0.5 ? vec3(1.0) : aColorMul;
+  vColor = mix(starC, textC, smoothstep(0.0, 0.85, uForm)) * mul;
+  vAlpha = tw * uGlow;
+}`;
+
+const FRAG = `
+uniform float uTheme;   // 0 = 桌面深底(加色混合)，1 = 手机浅底(正常混合)
+varying vec3 vColor;
+varying float vAlpha;
+void main() {
+  vec2 uv = gl_PointCoord - 0.5;
+  float d2 = dot(uv, uv);
+  if (d2 > 0.25) discard;
+  float core = exp(-d2 * 16.0);
+  float halo = exp(-d2 * 4.5);
+  float a = (core * 0.95 + halo * 0.45) * vAlpha;
+  vec3 col = vColor * (0.55 + 0.9 * core);
+  /* 浅底主题：半透明绒毛、保留深色，避免加色混合漂白 */
+  if (uTheme > 0.5) { col = vColor; a *= 0.85; }
+  gl_FragColor = vec4(col, a);
+}`;
+
+/* 鼠标轨迹的光晕彗尾 */
+const TVERT = `
+uniform float uPixelRatio;
+attribute float aAlpha;
+attribute float aSize;
+varying float vA;
+void main() {
+  vec4 mv = modelViewMatrix * vec4(position, 1.0);
+  gl_Position = projectionMatrix * mv;
+  gl_PointSize = min(aSize * (300.0 / max(1.0, -mv.z)) * uPixelRatio, 120.0);
+  vA = aAlpha;
+}`;
+
+const TFRAG = `
+uniform vec3 uColor;
+uniform float uGlow;
+uniform float uActive;
+varying float vA;
+void main() {
+  vec2 uv = gl_PointCoord - 0.5;
+  float d2 = dot(uv, uv);
+  if (d2 > 0.25) discard;
+  float core = exp(-d2 * 18.0);
+  float halo = exp(-d2 * 4.0);
+  float a = (core * 0.9 + halo * 0.5) * vA * uGlow * uActive;
+  gl_FragColor = vec4(uColor, a);
+}`;
+
+/* ============================================================ */
+
+function start() {
+  if (window.__started) return;
+  window.__started = true;
+
+  const IS_TOUCH = "ontouchstart" in window || navigator.maxTouchPoints > 0;
+
+  /* ============================================================
+   *  手机端：翻页信笺（与桌面星空完全不同的排版与交互）
+   *  —— 信封封面 → 轻点翻面 → 祝福正文 → 收下/再看一遍
+   *  不加载 three.js、不跑粒子动画，轻量快速
+   * ============================================================ */
+  if (IS_TOUCH) {
+    document.body.classList.add("touch-device");
+    document.title = "一封祝福信";
+    const letter = document.getElementById("letter");
+    const hint = document.getElementById("hint");
+    const letterFlip = document.getElementById("letter");
+    const doneBtn = document.getElementById("letterDone");
+    const againBtn = document.getElementById("letterAgain");
+    /* 出场：信封面在青绿天幕上浮现 */
+    hint.classList.add("hide");
+    /* 点封面 → 翻面 */
+    letterFlip.addEventListener("click", (e) => {
+      if (letterFlip.classList.contains("flipped")) return;
+      if (e.target.closest(".letter-btn")) return;   // 按钮不触发翻面
+      letterFlip.classList.add("flipped");
+    });
+    /* 收下祝福 → 淡出，提示再来 */
+    doneBtn.addEventListener("click", () => {
+      letterFlip.style.transition = "opacity .8s ease, transform .8s ease";
+      letterFlip.style.opacity = "0";
+      letterFlip.style.transform = "scale(.94)";
+      setTimeout(() => {
+        letterFlip.style.display = "none";
+        const t = document.createElement("div");
+        t.id = "letterDoneHint";
+        t.textContent = "愿常乐 · 随时回来再拆一封信";
+        t.style.cssText = "position:fixed;inset:0;z-index:6;display:flex;align-items:center;" +
+          "justify-content:center;font:300 16px/1.8 'Kaiti SC','STKaiti','KaiTi',serif;" +
+          "letter-spacing:.24em;color:#3d5a30;text-align:center;padding:0 40px;";
+        document.body.appendChild(t);
+      }, 850);
+    });
+    /* 再看一遍 → 翻回封面 */
+    againBtn.addEventListener("click", () => {
+      letterFlip.classList.remove("flipped");
+    });
+    return;
+  }
+
+  /* ==================== 桌面端：星空粒子告白 ==================== */
+  document.title = "为你点亮的星空";
+  const N = COUNT;
+  const CAM_Z = 650, FOV = 60;
+  const tanH = Math.tan(FOV * Math.PI / 360);
+  const vh = () => 2 * CAM_Z * tanH;              // z=0 处的可视高度
+  const vw = () => vh() * camera.aspect;
+
+  /* 鼠标 NDC（提前声明，buildButton 等函数也要用） */
+  const ndc = new THREE.Vector2(0, 0);
+
+  /* ---------- 渲染器 / 场景 / 相机 ---------- */
+  const scene = new THREE.Scene();
+  const camera = new THREE.PerspectiveCamera(FOV, innerWidth / innerHeight, 1, 4000);
+  const renderer = new THREE.WebGLRenderer({ alpha: true, antialias: false, powerPreference: "high-performance" });
+  renderer.setPixelRatio(Math.min(devicePixelRatio || 1, 2));
+  renderer.setSize(innerWidth, innerHeight);
+  document.body.appendChild(renderer.domElement);
+
+  /* ---------- 主粒子：pos 当前位置 / sct 星海 / txt 文字 / btn 按钮 / heart 心形 ---------- */
+  const pos = new Float32Array(N * 3);
+  const sct = new Float32Array(N * 3);
+  const txt = new Float32Array(N * 3);
+  const btn = new Float32Array(N * 3);
+  const heart = new Float32Array(N * 3);
+  const vel = new Float32Array(N * 3);
+  const aSize = new Float32Array(N), aPhase = new Float32Array(N), aCol = new Float32Array(N * 3);
+  for (let i = 0; i < N; i++) {
+    aSize[i] = 11 + Math.random() * 22;
+    aPhase[i] = Math.random();
+    const m = 0.72 + Math.random() * 0.5;
+    /* 桌面「星空」主题：冷蓝星光 */
+    aCol[i * 3]     = m * (0.9 + Math.random() * 0.25);
+    aCol[i * 3 + 1] = m * (0.9 + Math.random() * 0.25);
+    aCol[i * 3 + 2] = m * (1.0 + Math.random() * 0.3);
+  }
+
+  /* 星海：在视锥内铺满随机点 */
+  function genScatter() {
+    for (let i = 0; i < N; i++) {
+      const z = -450 + Math.random() * 1050;
+      const dist = CAM_Z - z;
+      const hh = tanH * dist, hw = hh * camera.aspect;
+      sct[i * 3]     = (Math.random() * 2 - 1) * hw * 0.92;
+      sct[i * 3 + 1] = (Math.random() * 2 - 1) * hh * 0.92;
+      sct[i * 3 + 2] = z;
+    }
+  }
+
+  /* 把 TEXT 画到离屏画布上，按密度抽样成目标点。
+     竖屏（手机）：自动拆两行，字更大更清晰；
+     横屏（桌面）：保持单行 */
+  function buildText() {
+    const W = 2400, H = 900;
+    const cv = document.createElement("canvas");
+    cv.width = W; cv.height = H;
+    const cx = cv.getContext("2d");
+    let lines = TEXT.split("\n");
+    if (camera.aspect < 1) {
+      /* 竖屏：按中文字符宽度折行，目标 2 行 */
+      const merged = lines.join("\n").replace(/\s+/g, "");
+      if (merged.length > 3) {
+        const half = Math.ceil(merged.length / 2);
+        lines = [merged.slice(0, half), merged.slice(half)];
+      }
+    }
+    const FONT = '"Arial Black", Arial, "PingFang SC", "Microsoft YaHei", sans-serif';
+    let fs = 640;
+    cx.font = "900 " + fs + "px " + FONT;
+    let maxW = 0;
+    for (const ln of lines) maxW = Math.max(maxW, cx.measureText(ln).width);
+    fs *= Math.min(1, (W * 0.9) / (maxW || 1), (H * 0.94) / (fs * 1.15 * Math.max(1, lines.length)));
+    cx.font = "900 " + fs + "px " + FONT;
+    cx.textAlign = "center"; cx.textBaseline = "middle";
+    cx.fillStyle = "#fff";
+    const lh = fs * 1.15;
+    lines.forEach((ln, k) => cx.fillText(ln, W / 2, H / 2 + (k - (lines.length - 1) / 2) * lh));
+    const img = cx.getImageData(0, 0, W, H).data;
+
+    let filled = 0;
+    for (let y = 0; y < H; y += 2) for (let x = 0; x < W; x += 2)
+      if (img[(y * W + x) * 4 + 3] > 110) filled++;
+
+    const stride = Math.max(1, Math.round(Math.sqrt(filled * 4 / N)));
+    const pts = [];
+    for (let y = 0; y < H; y += stride) for (let x = 0; x < W; x += stride)
+      if (img[(y * W + x) * 4 + 3] > 110)
+        pts.push(x + (Math.random() - 0.5) * stride, y + (Math.random() - 0.5) * stride);
+
+    let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
+    for (let k = 0; k < pts.length; k += 2) {
+      minX = Math.min(minX, pts[k]); maxX = Math.max(maxX, pts[k]);
+      minY = Math.min(minY, pts[k + 1]); maxY = Math.max(maxY, pts[k + 1]);
+    }
+    const bw = Math.max(1, maxX - minX), bh = Math.max(1, maxY - minY);
+    /* 文字完整装下：宽度顶到 88% 屏宽；竖屏可占 75% 屏高（多行字更大），横屏 50% */
+    const maxH = camera.aspect < 1 ? vh() * 0.75 : vh() * 0.50;
+    const fit = Math.min(maxH / bh, vw() * 0.88 / bw);
+    const cx0 = (minX + maxX) / 2, cy0 = (minY + maxY) / 2;
+    const K = Math.max(1, Math.floor(pts.length / 2));
+    for (let i = 0; i < N; i++) {
+      const k = (i % K) * 2;
+      txt[i * 3]     = (pts[k] - cx0) * fit;
+      txt[i * 3 + 1] = (cy0 - pts[k + 1]) * fit;
+      txt[i * 3 + 2] = (Math.random() - 0.5) * 34;
+    }
+  }
+
+  /* 按钮：粒子聚成发光圆盘，位置对齐 HTML 圆钮（#stageBtn）的世界坐标 */
+  function buildButton() {
+    /* 固定相机位置反投影（和 buildText 一致用 CAM_Z）：
+       按钮阶段相机已推近到位（z≈CAM_Z），视差也已归零，
+       若按加载时刻的 dist≈900 反投影，圆环会在相机推近后被放大并偏移 */
+    const camPos = new THREE.Vector3(0, 0, CAM_Z);
+    /* 取 HTML 按钮的屏幕中心（NDC），用纯数学反投影到 z=0 平面：
+       相机朝向原点，用 FOV/aspect 直接构造射线，不依赖 THREE 内部矩阵 */
+    const btnEl = document.getElementById("stageBtn");
+    const rect = btnEl.getBoundingClientRect();
+    const bx = (rect.left + rect.width / 2) / innerWidth * 2 - 1;
+    const by = -((rect.top + rect.height / 2) / innerHeight) * 2 + 1;
+    const fwd = new THREE.Vector3().subVectors(new THREE.Vector3(0, 0, 0), camPos).normalize();
+    const right = new THREE.Vector3().crossVectors(fwd, new THREE.Vector3(0, 1, 0)).normalize();
+    const up = new THREE.Vector3().crossVectors(right, fwd).normalize();
+    const halfW = tanH * camera.aspect, halfH = tanH;
+    const dir = fwd.clone()
+      .addScaledVector(right, bx * halfW)
+      .addScaledVector(up, by * halfH)
+      .normalize();
+    const tHit = -camPos.z / dir.z;
+    const center = camPos.clone().addScaledVector(dir, tHit);  // z=0 处中心点
+
+    /* 让圆盘中心对齐按钮中心；半径 = HTML 按钮屏幕半径的反投影（严格正圆） */
+    const btnRpx = btnEl.offsetWidth / 2;
+    const dist = CAM_Z;                       // 与相机实际位置一致
+    const worldPerPx = (2 * tanH * dist) / innerHeight;
+    const R = btnRpx * worldPerPx;
+    for (let i = 0; i < N; i++) {
+      const ang = Math.random() * Math.PI * 2;
+      const rr = R * (0.72 + Math.random() * 0.34);
+      btn[i * 3]     = center.x + Math.cos(ang) * rr;
+      btn[i * 3 + 1] = center.y + Math.sin(ang) * rr;
+      btn[i * 3 + 2] = (Math.random() - 0.5) * 24;
+    }
+  }
+
+  /* 心形：粒子沿心形曲线均匀分布（爱情曲线） */
+  function buildHeart() {
+    const R = Math.min(vw(), vh()) * 0.42;
+    for (let i = 0; i < N; i++) {
+      const t = Math.random() * Math.PI * 2;
+      const sx = 16 * Math.pow(Math.sin(t), 3);
+      const sy = 13 * Math.cos(t) - 5 * Math.cos(2 * t) - 2 * Math.cos(3 * t) - Math.cos(4 * t);
+      heart[i * 3]     = sx / 17 * R * (0.94 + Math.random() * 0.12);
+      heart[i * 3 + 1] = sy / 17 * R * (0.94 + Math.random() * 0.12);
+      heart[i * 3 + 2] = (Math.random() - 0.5) * 30;
+    }
+  }
+
+  genScatter();
+  buildText();
+  buildButton();
+  buildHeart();
+  pos.set(sct);
+
+  /* 当前粒子目标：初始就是文字（星海只是初始位置，聚字 = 从星海飞向文字） */
+  let target = txt;
+
+  const geo = new THREE.BufferGeometry();
+  geo.setAttribute("position", new THREE.BufferAttribute(pos, 3));
+  geo.setAttribute("aSize", new THREE.BufferAttribute(aSize, 1));
+  geo.setAttribute("aPhase", new THREE.BufferAttribute(aPhase, 1));
+  geo.setAttribute("aColorMul", new THREE.BufferAttribute(aCol, 3));
+
+  const mainMat = new THREE.ShaderMaterial({
+    uniforms: {
+      uTime: { value: 0 }, uForm: { value: 0 }, uGlow: { value: 0 },
+      uTheme: { value: 0 },
+      uPixelRatio: { value: renderer.getPixelRatio() },
+    },
+    vertexShader: VERT, fragmentShader: FRAG,
+    transparent: true, depthWrite: false, blending: THREE.AdditiveBlending,
+  });
+  const group = new THREE.Group();
+  group.add(new THREE.Points(geo, mainMat));
+  scene.add(group);
+
+  /* ---------- 远景小星星 ---------- */
+  const bgN = 420;
+  const bpos = new Float32Array(bgN * 3), bsize = new Float32Array(bgN),
+        bphase = new Float32Array(bgN), bcol = new Float32Array(bgN * 3);
+  const bgGeo = new THREE.BufferGeometry();
+  bgGeo.setAttribute("position", new THREE.BufferAttribute(bpos, 3));
+  bgGeo.setAttribute("aSize", new THREE.BufferAttribute(bsize, 1));
+  bgGeo.setAttribute("aPhase", new THREE.BufferAttribute(bphase, 1));
+  bgGeo.setAttribute("aColorMul", new THREE.BufferAttribute(bcol, 3));
+  const bgMat = new THREE.ShaderMaterial({
+    uniforms: {
+      uTime: { value: 0 }, uForm: { value: 0 }, uGlow: { value: 0 },
+      uTheme: { value: 0 },
+      uPixelRatio: { value: renderer.getPixelRatio() },
+    },
+    vertexShader: VERT, fragmentShader: FRAG,
+    transparent: true, depthWrite: false, blending: THREE.AdditiveBlending,
+  });
+  const bgPts = new THREE.Points(bgGeo, bgMat);
+  scene.add(bgPts);
+  function genBG() {
+    for (let i = 0; i < bgN; i++) {
+      const z = -1500 + Math.random() * 750;
+      const dist = CAM_Z - z;
+      const hh = tanH * dist, hw = hh * camera.aspect;
+      bpos[i * 3]     = (Math.random() * 2 - 1) * hw * 0.95;
+      bpos[i * 3 + 1] = (Math.random() * 2 - 1) * hh * 0.95;
+      bpos[i * 3 + 2] = z;
+      bsize[i]  = 7 + Math.random() * 12;
+      bphase[i] = Math.random();
+      const m = 0.5 + Math.random() * 0.45;
+      bcol[i * 3] = bcol[i * 3 + 1] = bcol[i * 3 + 2] = m;
+    }
+    bgGeo.attributes.position.needsUpdate = true;
+  }
+  genBG();
+
+  /* ---------- 鼠标光晕轨迹（彗尾） ---------- */
+  const TRAIL_N = 26;
+  const tpos = new Float32Array(TRAIL_N * 3), talpha = new Float32Array(TRAIL_N), tsize = new Float32Array(TRAIL_N);
+  const tp = [];
+  for (let i = 0; i < TRAIL_N; i++) {
+    tp.push(new THREE.Vector3(0, 0, CAM_Z + 400));
+    talpha[i] = Math.pow(1 - i / TRAIL_N, 1.7) * 0.9;
+    tsize[i] = 130 - i * (124 / TRAIL_N);
+  }
+  const tgeo = new THREE.BufferGeometry();
+  tgeo.setAttribute("position", new THREE.BufferAttribute(tpos, 3));
+  tgeo.setAttribute("aAlpha", new THREE.BufferAttribute(talpha, 1));
+  tgeo.setAttribute("aSize", new THREE.BufferAttribute(tsize, 1));
+  const tmat = new THREE.ShaderMaterial({
+    uniforms: {
+      /* 手机「蒲公英」主题：暖白绒毛 */
+      uColor: { value: new THREE.Color(1, 0.78, 0.55) },
+      uGlow: { value: 0 }, uActive: { value: 0 },
+      uPixelRatio: { value: renderer.getPixelRatio() },
+    },
+    vertexShader: TVERT, fragmentShader: TFRAG,
+    transparent: true, depthWrite: false, blending: THREE.AdditiveBlending,
+  });
+  scene.add(new THREE.Points(tgeo, tmat));
+
+  /* ---------- 文字/按钮背后的暖色柔光 ---------- */
+  function makeGlowTexture() {
+    const c = document.createElement("canvas");
+    c.width = c.height = 256;
+    const g = c.getContext("2d");
+    const gr = g.createRadialGradient(128, 128, 0, 128, 128, 128);
+    gr.addColorStop(0, "rgba(255,245,225,1)");
+    gr.addColorStop(0.12, "rgba(255,214,160,0.85)");
+    gr.addColorStop(0.4, "rgba(255,170,90,0.25)");
+    gr.addColorStop(1, "rgba(255,150,60,0)");
+    g.fillStyle = gr; g.fillRect(0, 0, 256, 256);
+    return new THREE.CanvasTexture(c);
+  }
+  const glowMat = new THREE.SpriteMaterial({
+    map: makeGlowTexture(), blending: THREE.AdditiveBlending,
+    transparent: true, depthWrite: false, opacity: 0,
+  });
+  const glow = new THREE.Sprite(glowMat);
+  glow.position.z = -70;
+  glow.scale.setScalar(560);
+  group.add(glow);
+
+  /* ---------- 交互状态 ---------- */
+  const mouse = { active: false };
+  const mouseWorld = new THREE.Vector3(0, 0, 0);
+  const planeZ0 = new THREE.Plane(new THREE.Vector3(0, 0, 1), 0);
+  const raycaster = new THREE.Raycaster();
+  const hint = document.getElementById("hint");
+  const tapHint = document.getElementById("tapHint");
+  const stageBtn = document.getElementById("stageBtn");
+  const qaPanel = document.getElementById("qa");
+  const answerPanel = document.getElementById("answer");
+  const yesBtn = document.getElementById("yes");
+  const noBtn = document.getElementById("no");
+
+  function startForm() {
+    if (window.__forming) return;
+    window.__forming = true;
+    hint.classList.add("hide");
+  }
+  window.addEventListener("pointermove", (e) => {
+    ndc.set((e.clientX / innerWidth) * 2 - 1, -(e.clientY / innerHeight) * 2 + 1);
+    mouse.active = true;
+  }, { passive: true });
+  window.addEventListener("pointerdown", startForm, { passive: true });
+  window.addEventListener("pointerleave", () => { mouse.active = false; });
+  document.addEventListener("visibilitychange", () => { last = performance.now(); });
+  /* 用轮询替代 setTimeout：headless/低帧率环境也可靠 */
+  let bootAt = performance.now();
+
+  /* ---------- 阶段状态机：stars → text → scatter → btn → stars2 → qa → answer ---------- */
+  let phase = "stars";          // 当前阶段
+  let textDoneAt = 0;           // 文字成型时间（毫秒）
+  let btnDoneAt = 0;            // 按钮成型时间（用于显示 HTML 按钮）
+  let scatterAt = 0;            // 打乱开始时间（毫秒）
+  let scatterStarted = false;   // 本次打乱是否已启动
+  let pulse = 0;                // 阶段切换闪光
+  let answered = false;
+
+  /* 「不想」按钮：逃跑逻辑（桌面 hover 触发） */
+  let escapeCount = 0, surrendered = false;
+  function placeNoBtn() {
+    const pad = 12;
+    const bw = noBtn.offsetWidth || 120, bh = noBtn.offsetHeight || 52;
+    const maxX = Math.max(pad, innerWidth - bw - pad);
+    const maxY = Math.max(pad, innerHeight - bh - pad);
+    noBtn.style.left = (pad + Math.random() * (maxX - pad)) + "px";
+    noBtn.style.top  = (pad + Math.random() * (maxY - pad)) + "px";
+  }
+  function flee() {
+    if (surrendered) return;
+    escapeCount++;
+    placeNoBtn();
+    if (escapeCount >= ESCAPE_COUNT) {
+      surrendered = true;
+      noBtn.textContent = "好吧…点这里也行";
+      noBtn.style.transition = "transform .15s ease";
+    }
+  }
+  /* 桌面：鼠标碰到就跑 */
+  noBtn.addEventListener("mouseenter", flee);
+
+  /* 「想」→ 答案 */
+  function reveal() {
+    if (answered) return;
+    answered = true;
+    qaPanel.classList.remove("show");
+    answerPanel.querySelector(".a").textContent = ANSWER_TEXT;
+    answerPanel.classList.add("show");
+    pulse = 1;
+    phase = "answer";
+  }
+  yesBtn.addEventListener("click", reveal);
+  noBtn.addEventListener("click", reveal);   // 缴械后点了也能看答案
+
+  /* 文字成型后：点击屏幕 → 打乱星星 */
+  function scatterStars() {
+    if (phase !== "text") return;
+    if (performance.now() - textDoneAt < 500) return;   // 防止聚字刚完成就被跳过
+    phase = "scatter";
+    scatterAt = performance.now();
+    scatterStarted = false;
+    tapHint.classList.remove("show");
+  }
+  window.addEventListener("pointerdown", (e) => {
+    if (phase === "text") scatterStars();
+  });
+
+  /* 粒子按钮 → 回星星背景 + 弹问题 */
+  stageBtn.addEventListener("pointerdown", (e) => {
+    e.preventDefault();
+    stageBtn.classList.remove("show");
+    pulse = 0.8;
+    phase = "qa";
+    target = sct;                 // 回到星星背景
+    placeNoBtn();                 // 给「不想」一个初始位置
+    qaPanel.classList.add("show");
+  });
+
+  let rsT = 0;
+  window.addEventListener("resize", () => {
+    clearTimeout(rsT);
+    rsT = setTimeout(() => {
+      camera.aspect = innerWidth / innerHeight;
+      camera.updateProjectionMatrix();
+      renderer.setSize(innerWidth, innerHeight);
+      genScatter(); buildText(); buildButton(); buildHeart();
+    }, 150);
+  });
+
+  /* ---------- 主循环 ---------- */
+  let last = performance.now();
+  let uForm = 0;
+  let uFormTarget = 0;          // 颜色/大小目标：stars/scatter/qa=冷蓝，text/btn=暖金
+  let uActiveV = 0;
+
+  function frame(now) {
+    requestAnimationFrame(frame);
+    const t = now / 1000;
+    let dt = (now - last) / 1000; last = now;
+    if (dt > 0.06) dt = 0.06;
+    const s60 = dt * 60;
+
+    const glowV = Math.min(1, t / 1.8);
+    mainMat.uniforms.uGlow.value = glowV;
+    bgMat.uniforms.uGlow.value = glowV;
+    tmat.uniforms.uGlow.value = glowV;
+
+    /* 阶段推进 */
+    if (!window.__forming && performance.now() - bootAt > AUTO_FORM_DELAY) startForm();
+
+    /* 粒子颜色/大小目标随阶段切换 */
+    switch (phase) {
+      case "stars":   uFormTarget = 1; break;  // 聚字过程：涨到 1 完成聚字
+      case "text":    uFormTarget = 1; break;
+      case "scatter": uFormTarget = 0; break;
+      case "btn":     uFormTarget = 1; break;
+      case "qa":      uFormTarget = 0; break;
+      case "answer":  uFormTarget = 0; break;
+    }
+    if (uForm < uFormTarget) uForm = Math.min(uFormTarget, uForm + dt * 0.5);
+    else if (uForm > uFormTarget) uForm = Math.max(uFormTarget, uForm - dt * 0.9);
+
+    /* 聚字完成（一次性判定） */
+    if (phase === "stars" && window.__forming && uForm >= 0.99) {
+      phase = "text";
+      textDoneAt = performance.now();
+      pulse = 1;
+      tapHint.classList.add("show");      // 提示轻点屏幕
+    }
+    /* 点击打乱：先散开，停留片刻再聚成按钮 */
+    if (phase === "scatter") {
+      if (!scatterStarted) {
+        scatterStarted = true;
+        target = sct;                        // 打乱回星海
+      }
+      if (performance.now() - scatterAt > SCATTER_HOLD) {
+        phase = "btn";
+        target = btn;
+        btnDoneAt = t;
+      }
+    }
+    if (phase === "btn" && t - btnDoneAt > 1.0) {
+      stageBtn.classList.add("show");        // 粒子聚成圆盘后，浮现发光按钮
+    }
+
+    mainMat.uniforms.uForm.value = uForm;
+    mainMat.uniforms.uTime.value = t;
+    bgMat.uniforms.uTime.value = t;
+    pulse = Math.max(0, pulse - dt * 1.4);
+
+    /* 相机：开场缓缓推近 + 随鼠标视差；按钮阶段视差平滑归零，
+       保证粒子圆环与 HTML 按钮完全对齐（buildButton 按视差归零反投影） */
+    const zoomIn = 250 * Math.exp(-t * 0.8);
+    let px = ndc.x * 34;
+    let py = ndc.y * 20;
+    if (phase === "btn" || phase === "qa" || phase === "answer") {
+      const decay = Math.min(1, (t - btnDoneAt) * 1.2);   // 1 秒内归零
+      px *= 1 - decay; py *= 1 - decay;
+    }
+    const cz = CAM_Z + zoomIn;
+    camera.position.set(px, py, cz);
+    camera.lookAt(0, 0, 0);
+
+    /* 成字/成心后极轻的摇曳与呼吸 */
+    const sway = (phase === "text" || phase === "btn" || phase === "answer" || phase === "qa")
+      ? Math.sin(t * 0.33) * 0.045 : 0;
+    group.rotation.y = sway;
+    group.scale.setScalar(1 + (phase === "answer" ? Math.sin(t * 1.25) * 0.007 : 0));
+
+    /* 鼠标世界坐标（z=0 平面）→ group 局部坐标（抵消摇曳） */
+    raycaster.setFromCamera(ndc, camera);
+    if (raycaster.ray.intersectPlane(planeZ0, mouseWorld)) {
+      const ca = Math.cos(-sway), sa = Math.sin(-sway);
+      const lx = mouseWorld.x * ca + mouseWorld.z * sa;
+      const ly = mouseWorld.y;
+      const lz = -mouseWorld.x * sa + mouseWorld.z * ca;
+
+      /* 弹簧：目标点越近，吸附越强；阻尼防抖；再加一点布朗抖动。
+         按钮阶段用更强的吸附力（k=0.05），粒子快速聚成圆盘，
+         否则从星海飞回按钮的旅途太长，粒子会长时间停在半途成"乱"状 */
+      const k = (phase === "btn") ? 0.05
+              : 0.004 + 0.02 * uForm;
+      const damp = Math.exp(-0.11 * s60);
+      const R = 230, R2 = R * R, STR = 5.5;
+      const jit = 0.1 - 0.075 * uForm;
+
+      for (let i = 0; i < N; i++) {
+        const ix = i * 3;
+        const px = pos[ix], py = pos[ix + 1], pz = pos[ix + 2];
+        const dx = px - lx, dy = py - ly, dz = pz - lz;
+        const d2 = dx * dx + dy * dy + dz * dz;
+        let vx = vel[ix], vy = vel[ix + 1], vz = vel[ix + 2];
+        if (phase !== "btn" && d2 < R2) {
+          const d = Math.sqrt(d2) || 0.001;
+          const f = STR * (1 - d / R);
+          vx += dx / d * f * s60;
+          vy += dy / d * f * s60;
+          vz += dz / d * f * s60;
+        }
+        vx += ((target[ix] - px) * k + (Math.random() - 0.5) * jit) * s60;
+        vy += ((target[ix + 1] - py) * k + (Math.random() - 0.5) * jit) * s60;
+        vz += ((target[ix + 2] - pz) * k + (Math.random() - 0.5) * jit) * s60;
+        pos[ix] += vx * s60; pos[ix + 1] += vy * s60; pos[ix + 2] += vz * s60;
+        vel[ix] = vx * damp; vel[ix + 1] = vy * damp; vel[ix + 2] = vz * damp;
+      }
+      geo.attributes.position.needsUpdate = true;
+    }
+
+    /* 彗尾：头部追鼠标，其余点依次跟随 */
+    if (mouse.active) {
+      tp[0].lerp(mouseWorld, Math.min(1, dt * 28));
+      for (let i = 1; i < TRAIL_N; i++) tp[i].lerp(tp[i - 1], Math.min(1, dt * 16));
+    }
+    for (let i = 0; i < TRAIL_N; i++) {
+      tpos[i * 3] = tp[i].x; tpos[i * 3 + 1] = tp[i].y; tpos[i * 3 + 2] = tp[i].z;
+    }
+    tgeo.attributes.position.needsUpdate = true;
+    uActiveV += ((mouse.active ? 1 : 0) - uActiveV) * Math.min(1, dt * 6);
+    tmat.uniforms.uActive.value = uActiveV;
+
+    /* 背后柔光：随聚字渐亮，阶段切换时闪一下 */
+    glowMat.opacity = glowV * (uForm * (0.32 + 0.1 * Math.sin(t * 0.9)) + pulse * 0.5);
+    glow.scale.setScalar(560 * (1 + pulse * 0.22));
+    /* 问答阶段柔光更暖更亮 */
+    if (phase === "qa" || phase === "answer") glowMat.opacity += 0.18 * uForm;
+
+    renderer.render(scene, camera);
+  }
+  requestAnimationFrame(frame);
+}
+
+/* ============================================================
+ *  CDN 加载：本地优先 → jsdelivr → unpkg → staticfile
+ * ============================================================ */
+/* 触摸设备直接进手机版（翻页信笺），不加载 three.js；
+   桌面端再走 CDN 加载 */
+(function init() {
+  if ("ontouchstart" in window || navigator.maxTouchPoints > 0) return start();
+  loadThree(0);
+})();
+function loadThree(i) {
+  if (window.THREE) return start();
+  if (i >= CDNS.length) {
+    document.getElementById("hint").innerHTML =
+      '<div class="t" style="background:none;color:#aab6e8">加载失败</div>' +
+      '<div class="s">网络似乎连不上 CDN，请检查网络后刷新页面</div>';
+    return;
+  }
+  const s = document.createElement("script");
+  s.src = CDNS[i];
+  s.onload = () => start();
+  s.onerror = () => loadThree(i + 1);
+  document.head.appendChild(s);
+}
+</script>
+</body>
+</html>

@@ -1,0 +1,10 @@
+# 构建产物 / 本地运行文件（不上传）
+server/
+启动星空.exe
+启动星空.exe.bak
+*.exe
+
+# 环境
+.claude/
+.DS_Store
+Thumbs.db
