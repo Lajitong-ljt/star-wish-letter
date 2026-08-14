@@ -296,6 +296,51 @@ function IS_TOUCH_CHECK() {
     ("ontouchstart" in window || navigator.maxTouchPoints > 0);
 }
 
+/* WebGL 可用性预检：有些设备（无显卡/老设备/浏览器禁用硬件加速）
+   拿不到 WebGL 上下文，Three.js 会直接抛异常 → 页面黑屏。
+   预先探测，失败时走信笺兜底 */
+function HAS_WEBGL() {
+  try {
+    const c = document.createElement("canvas");
+    return !!(c.getContext("webgl") || c.getContext("experimental-webgl"));
+  } catch (e) { return false; }
+}
+
+/* 兜底：WebGL 不可用时直接展示翻页信笺（手机版内容，纯 CSS 不依赖 GPU） */
+function showLetterFallback() {
+  document.title = "一封祝福信";
+  const hint = document.getElementById("hint");
+  hint.classList.add("hide");
+  const letterFlip = document.getElementById("letter");
+  const doneBtn = document.getElementById("letterDone");
+  const againBtn = document.getElementById("letterAgain");
+  letterFlip.addEventListener("click", (e) => {
+    if (letterFlip.classList.contains("flipped")) return;
+    if (e.target.closest(".letter-btn")) return;
+    letterFlip.classList.add("flipped");
+  });
+  doneBtn.addEventListener("click", () => {
+    letterFlip.style.transition = "opacity .8s ease, transform .8s ease";
+    letterFlip.style.opacity = "0";
+    letterFlip.style.transform = "scale(.94)";
+    setTimeout(() => {
+      letterFlip.style.display = "none";
+      const t = document.createElement("div");
+      t.id = "letterDoneHint";
+      t.textContent = "愿常乐 · 随时回来再拆一封信";
+      t.style.cssText = "position:fixed;inset:0;z-index:6;display:flex;align-items:center;" +
+        "justify-content:center;font:300 16px/1.8 'Kaiti SC','STKaiti','KaiTi',serif;" +
+        "letter-spacing:.24em;color:#3d5a30;text-align:center;padding:0 40px;";
+      document.body.appendChild(t);
+    }, 850);
+  });
+  againBtn.addEventListener("click", () => {
+    letterFlip.classList.remove("flipped");
+  });
+  /* 页面默认走桌面星空；无 WebGL 时切到信笺样式（仅隐藏默认的星空暗底） */
+  document.body.classList.add("touch-device");
+}
+
 function start() {
   if (window.__started) return;
   window.__started = true;
@@ -309,40 +354,7 @@ function start() {
    * ============================================================ */
   if (IS_TOUCH) {
     document.body.classList.add("touch-device");
-    document.title = "一封祝福信";
-    const letter = document.getElementById("letter");
-    const hint = document.getElementById("hint");
-    const letterFlip = document.getElementById("letter");
-    const doneBtn = document.getElementById("letterDone");
-    const againBtn = document.getElementById("letterAgain");
-    /* 出场：信封面在青绿天幕上浮现 */
-    hint.classList.add("hide");
-    /* 点封面 → 翻面 */
-    letterFlip.addEventListener("click", (e) => {
-      if (letterFlip.classList.contains("flipped")) return;
-      if (e.target.closest(".letter-btn")) return;   // 按钮不触发翻面
-      letterFlip.classList.add("flipped");
-    });
-    /* 收下祝福 → 淡出，提示再来 */
-    doneBtn.addEventListener("click", () => {
-      letterFlip.style.transition = "opacity .8s ease, transform .8s ease";
-      letterFlip.style.opacity = "0";
-      letterFlip.style.transform = "scale(.94)";
-      setTimeout(() => {
-        letterFlip.style.display = "none";
-        const t = document.createElement("div");
-        t.id = "letterDoneHint";
-        t.textContent = "愿常乐 · 随时回来再拆一封信";
-        t.style.cssText = "position:fixed;inset:0;z-index:6;display:flex;align-items:center;" +
-          "justify-content:center;font:300 16px/1.8 'Kaiti SC','STKaiti','KaiTi',serif;" +
-          "letter-spacing:.24em;color:#3d5a30;text-align:center;padding:0 40px;";
-        document.body.appendChild(t);
-      }, 850);
-    });
-    /* 再看一遍 → 翻回封面 */
-    againBtn.addEventListener("click", () => {
-      letterFlip.classList.remove("flipped");
-    });
+    bindLetterInteractions();
     return;
   }
 
@@ -875,6 +887,9 @@ function start() {
   /* 触摸设备直接进手机版（翻页信笺），不加载 three.js；
      判定以 pointer:fine 为准：有鼠标/触控板（含触控板笔记本）算桌面端 */
   if (IS_TOUCH_CHECK()) return start();
+  /* 桌面端但 WebGL 不可用（老设备/禁硬件加速）：
+     不加载 three.js，直接进信笺兜底，避免黑屏 */
+  if (!HAS_WEBGL()) return showLetterFallback();
   loadThree(0);
 })();
 function loadThree(i) {
@@ -887,7 +902,14 @@ function loadThree(i) {
   }
   const s = document.createElement("script");
   s.src = CDNS[i];
-  s.onload = () => start();
+  s.onload = () => {
+    try { start(); }
+    catch (e) {
+      /* three 加载成功但初始化崩溃（WebGL 上下文拿不到等）→ 信笺兜底 */
+      console.error(e);
+      showLetterFallback();
+    }
+  };
   s.onerror = () => loadThree(i + 1);
   document.head.appendChild(s);
 }
