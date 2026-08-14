@@ -288,11 +288,19 @@ void main() {
 
 /* ============================================================ */
 
+/* 设备判定：有精确指针（鼠标/触控板）就算桌面端；
+   触摸屏手机才走信笺。触控板笔记本会被 maxTouchPoints 误报，
+   故以 pointer:fine 为准，不被触摸点数带偏 */
+function IS_TOUCH_CHECK() {
+  return !(window.matchMedia && window.matchMedia("(pointer: fine)").matches) &&
+    ("ontouchstart" in window || navigator.maxTouchPoints > 0);
+}
+
 function start() {
   if (window.__started) return;
   window.__started = true;
 
-  const IS_TOUCH = "ontouchstart" in window || navigator.maxTouchPoints > 0;
+  const IS_TOUCH = IS_TOUCH_CHECK();
 
   /* ============================================================
    *  手机端：翻页信笺（与桌面星空完全不同的排版与交互）
@@ -864,7 +872,9 @@ function start() {
 /* 触摸设备直接进手机版（翻页信笺），不加载 three.js；
    桌面端再走 CDN 加载 */
 (function init() {
-  if ("ontouchstart" in window || navigator.maxTouchPoints > 0) return start();
+  /* 触摸设备直接进手机版（翻页信笺），不加载 three.js；
+     判定以 pointer:fine 为准：有鼠标/触控板（含触控板笔记本）算桌面端 */
+  if (IS_TOUCH_CHECK()) return start();
   loadThree(0);
 })();
 function loadThree(i) {
